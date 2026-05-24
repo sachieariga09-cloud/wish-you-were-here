@@ -46,7 +46,7 @@ export function PostcardLanding({ onSend }: PostcardLandingProps) {
       }}
     >
       <p className="font-instrument-serif shrink-0 text-center text-[23px] leading-snug text-black md:text-[24px]">
-        Tap to flip postcard.
+        Tap postcard to flip.
       </p>
 
       <div
