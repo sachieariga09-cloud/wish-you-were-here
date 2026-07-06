@@ -1,26 +1,31 @@
+import { memo, useMemo } from 'react';
+
 interface LiveVideoProps {
   videoId: string;
   city: string;
   isFrozen?: boolean;
 }
 
-export function LiveVideo({ videoId, city, isFrozen }: LiveVideoProps) {
-  const embedParams = new URLSearchParams({
-    autoplay: '1',
-    mute: '1',
-    controls: '0',
-    rel: '0',
-    modestbranding: '1',
-    playsinline: '1',
-    enablejsapi: '1',
-    loop: '1',
-    playlist: videoId,
-  });
+function LiveVideoInner({ videoId, city, isFrozen }: LiveVideoProps) {
+  const src = useMemo(() => {
+    const embedParams = new URLSearchParams({
+      autoplay: '1',
+      mute: '1',
+      controls: '0',
+      rel: '0',
+      modestbranding: '1',
+      playsinline: '1',
+      enablejsapi: '1',
+      loop: '1',
+      playlist: videoId,
+    });
+    return `https://www.youtube.com./embed/${videoId}?${embedParams.toString()}`;
+  }, [videoId]);
 
   return (
     <div className="relative w-full h-full">
       <iframe
-        src={`https://www.youtube.com/embed/${videoId}?${embedParams.toString()}`}
+        src={src}
         title={`Live feed from ${city}`}
         className="absolute inset-0 w-full h-full"
         style={{
@@ -33,3 +38,5 @@ export function LiveVideo({ videoId, city, isFrozen }: LiveVideoProps) {
     </div>
   );
 }
+
+export const LiveVideo = memo(LiveVideoInner);
