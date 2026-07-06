@@ -46,14 +46,49 @@ input, textarea {
 
 
 .live-feed-shell {
+  position: relative;
+  isolation: isolate;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
-/* Scattered star dots on navy (night) live feed — layered over --page-bg */
+.live-feed-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--stars-opacity, 0);
+  transition: opacity 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: transparent;
+}
+
+.live-feed-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 767px) {
+  [data-city-card] {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 280px;
+  }
+
+  .live-feed-video-shell {
+    opacity: 1;
+    transform: translateZ(0);
+    contain: layout style paint;
+  }
+
+  .live-feed-video-shell--dim {
+    opacity: 0.9;
+  }
+}
+
+/* Scattered star dots — gallery (full bleed) + live feed overlay (::before) */
 .starry-sky,
-.live-feed-shell[data-scroll-phase='night'] {
-  background-color: #0d1b2a;
+.live-feed-shell::before {
   background-image:
     radial-gradient(circle at 4% 8%, rgba(255, 255, 255, 0.88) 0.45px, transparent 1.05px),
     radial-gradient(circle at 11% 3%, rgba(255, 255, 255, 0.42) 0.4px, transparent 1px),
@@ -277,4 +312,8 @@ input, textarea {
   background-repeat: no-repeat;
   background-size: 100% 100%;
   background-position: center;
+}
+
+.starry-sky {
+  background-color: #0d1b2a;
 }

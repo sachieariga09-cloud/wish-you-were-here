@@ -117,27 +117,19 @@ export default function App() {
   useScrollPhasedPageTheme(liveScrollRef, viewState === 'live');
 
   useEffect(() => {
-    if (viewState !== 'live') return;
-
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+    if (viewState !== 'live' || !isMobile) return;
 
     const root = liveScrollRef.current;
-    if (!root) {
-      return () => {
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-      };
-    }
+    if (!root) return;
 
     let touchStartY = 0;
     const onTouchStart = (e: TouchEvent) => {
       touchStartY = e.touches[0]?.clientY ?? 0;
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (root.scrollTop > 0) return;
+      if (root.scrollTop > 2) return;
       const y = e.touches[0]?.clientY ?? 0;
-      if (y > touchStartY + 6) {
+      if (y > touchStartY + 20) {
         e.preventDefault();
       }
     };
@@ -146,10 +138,20 @@ export default function App() {
     root.addEventListener('touchmove', onTouchMove, { passive: false });
 
     return () => {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
       root.removeEventListener('touchstart', onTouchStart);
       root.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [viewState, isMobile]);
+
+  useEffect(() => {
+    if (viewState !== 'live') return;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
   }, [viewState]);
 
@@ -216,12 +218,7 @@ export default function App() {
   };
 
   if (viewState === 'entry') {
-    return (
-      <div className="relative size-full">
-        <TopNav current="entry" onNavigate={handleNavigate} variant="light" />
-        <PostcardLanding key={landingKey} onSend={handleSendPostcard} />
-      </div>
-    );
+    return <PostcardLanding key={landingKey} onSend={handleSendPostcard} />;
   }
 
   if (viewState === 'gallery') {
@@ -238,7 +235,7 @@ export default function App() {
       className="live-feed-shell size-full overflow-auto"
       style={
         {
-          '--page-bg': '#F7F5F2',
+          '--page-bg': '#E8F1F8',
           '--page-fg': '#333333',
           '--page-fg-strong': '#111111',
           '--page-muted': '#666666',
@@ -247,8 +244,7 @@ export default function App() {
           '--page-footer-fg': '#1e3a5f',
           backgroundColor: 'var(--page-bg)',
           color: 'var(--page-fg)',
-          transition: 'background-color 0.7s ease, color 0.7s ease',
-          scrollBehavior: isMobile ? 'auto' : 'smooth',
+          scrollBehavior: 'auto',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
         } as CSSProperties

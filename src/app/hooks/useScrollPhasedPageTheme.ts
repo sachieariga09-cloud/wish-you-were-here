@@ -1,6 +1,17 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 type Phase = 'night' | 'dawn' | 'day' | 'dusk';
+
+type ThemeVars = {
+  phase: Phase;
+  bg: string;
+  fg: string;
+  fgStrong: string;
+  muted: string;
+  headerFg: string;
+  headerFgStrong: string;
+  footerFg: string;
+};
 
 function localMinutesSinceMidnight(utcOffsetHours: number, d = new Date()): number {
   const utcMin = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
@@ -20,7 +31,7 @@ function phaseFromLocalMinutes(m: number): Phase {
 const BG: Record<Phase, string> = {
   night: '#0d1b2a',
   dawn: '#ffc39c',
-  day: '#F7F5F2',
+  day: '#E8F1F8',
   dusk: '#ffc39c',
 };
 
@@ -45,7 +56,6 @@ const MUTED: Record<Phase, string> = {
   dusk: 'rgba(47, 41, 38, 0.62)',
 };
 
-/** Top bar only: navy on light “day” background; elsewhere matches body foreground. */
 const HEADER_FG: Record<Phase, string> = {
   night: '#f0ece4',
   dawn: '#2f2926',
@@ -60,7 +70,6 @@ const HEADER_FG_STRONG: Record<Phase, string> = {
   dusk: '#1a1614',
 };
 
-/** Live footer: navy on light/orange backgrounds, white on navy night. */
 const FOOTER_FG: Record<Phase, string> = {
   night: '#ffffff',
   dawn: '#1e3a5f',
@@ -68,15 +77,82 @@ const FOOTER_FG: Record<Phase, string> = {
   dusk: '#1e3a5f',
 };
 
-function applyVars(root: HTMLElement, phase: Phase) {
+function themeForUtcOffset(offset: number): ThemeVars {
+  const phase = phaseFromLocalMinutes(localMinutesSinceMidnight(offset));
+  return {
+    phase,
+    bg: BG[phase],
+    fg: FG[phase],
+    fgStrong: FG_STRONG[phase],
+    muted: MUTED[phase],
+    headerFg: HEADER_FG[phase],
+    headerFgStrong: HEADER_FG_STRONG[phase],
+    footerFg: FOOTER_FG[phase],
+  };
+}
+
+function parseCssColor(input: string): [number, number, number, number] {
+  const s = input.trim();
+  if (s.startsWith('#')) {
+    const hex = s.slice(1);
+    const full =
+      hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const n = parseInt(full, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1];
+  }
+  const rgba = s.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/,
+  );
+  if (rgba) {
+    return [+rgba[1], +rgba[2], +rgba[3], rgba[4] !== undefined ? +rgba[4] : 1];
+  }
+  return [0, 0, 0, 1];
+}
+
+function lerpColor(c1: string, c2: string, t: number): string {
+  if (t <= 0) return c1;
+  if (t >= 1) return c2;
+  const [r1, g1, b1, a1] = parseCssColor(c1);
+  const [r2, g2, b2, a2] = parseCssColor(c2);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  const a = a1 + (a2 - a1) * t;
+  if (a >= 0.999 && a1 >= 0.999 && a2 >= 0.999) {
+    return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+}
+
+function smoothstep(t: number): number {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+}
+
+function nightStarsOpacity(phase: Phase): number {
+  return phase === 'night' ? 1 : 0;
+}
+
+function applyBlended(root: HTMLElement, a: ThemeVars, b: ThemeVars, t: number) {
+  const blend = smoothstep(t);
+  const phase = blend < 0.5 ? a.phase : b.phase;
   root.dataset.scrollPhase = phase;
-  root.style.setProperty('--page-bg', BG[phase]);
-  root.style.setProperty('--page-fg', FG[phase]);
-  root.style.setProperty('--page-fg-strong', FG_STRONG[phase]);
-  root.style.setProperty('--page-muted', MUTED[phase]);
-  root.style.setProperty('--page-header-fg', HEADER_FG[phase]);
-  root.style.setProperty('--page-header-fg-strong', HEADER_FG_STRONG[phase]);
-  root.style.setProperty('--page-footer-fg', FOOTER_FG[phase]);
+  root.style.setProperty('--page-bg', lerpColor(a.bg, b.bg, blend));
+  root.style.setProperty('--page-fg', lerpColor(a.fg, b.fg, blend));
+  root.style.setProperty('--page-fg-strong', lerpColor(a.fgStrong, b.fgStrong, blend));
+  root.style.setProperty('--page-muted', lerpColor(a.muted, b.muted, blend));
+  root.style.setProperty('--page-header-fg', lerpColor(a.headerFg, b.headerFg, blend));
+  root.style.setProperty(
+    '--page-header-fg-strong',
+    lerpColor(a.headerFgStrong, b.headerFgStrong, blend),
+  );
+  root.style.setProperty('--page-footer-fg', lerpColor(a.footerFg, b.footerFg, blend));
+  root.style.setProperty(
+    '--stars-opacity',
+    String(
+      nightStarsOpacity(a.phase) + (nightStarsOpacity(b.phase) - nightStarsOpacity(a.phase)) * blend,
+    ),
+  );
 }
 
 function clearVars(root: HTMLElement) {
@@ -88,65 +164,76 @@ function clearVars(root: HTMLElement) {
   root.style.removeProperty('--page-header-fg');
   root.style.removeProperty('--page-header-fg-strong');
   root.style.removeProperty('--page-footer-fg');
+  root.style.removeProperty('--stars-opacity');
 }
 
-function findDominantCityCard(scrollRoot: HTMLElement): HTMLElement | null {
+function getCardTheme(card: HTMLElement): ThemeVars | null {
+  const raw = card.dataset.utcOffset;
+  if (raw === undefined || raw === '') return null;
+  const offset = parseFloat(raw);
+  if (Number.isNaN(offset)) return null;
+  return themeForUtcOffset(offset);
+}
+
+function findScrollBlend(
+  scrollRoot: HTMLElement,
+): { a: ThemeVars; b: ThemeVars; t: number } | null {
   const cards = scrollRoot.querySelectorAll<HTMLElement>('[data-city-card]');
   if (!cards.length) return null;
 
-  const vh = window.innerHeight;
-  const mid = vh / 2;
-  let best: HTMLElement | null = null;
-  let bestScore = -1;
+  const mid = window.innerHeight / 2;
+  const entries: { center: number; theme: ThemeVars }[] = [];
 
   cards.forEach((el) => {
+    const theme = getCardTheme(el);
+    if (!theme) return;
     const r = el.getBoundingClientRect();
-    const visible = r.bottom > 8 && r.top < vh - 8;
-    if (!visible) return;
-    const center = r.top + r.height / 2;
-    const dist = Math.abs(center - mid);
-    const score = (1 / (1 + dist)) * Math.min(r.height, vh);
-    if (score > bestScore) {
-      bestScore = score;
-      best = el;
-    }
+    entries.push({ center: r.top + r.height / 2, theme });
   });
 
-  return best;
+  if (!entries.length) return null;
+  entries.sort((x, y) => x.center - y.center);
+
+  if (entries.length === 1) {
+    return { a: entries[0].theme, b: entries[0].theme, t: 0 };
+  }
+
+  for (let i = 0; i < entries.length - 1; i++) {
+    const c0 = entries[i].center;
+    const c1 = entries[i + 1].center;
+    if (mid >= c0 && mid <= c1) {
+      const span = c1 - c0;
+      const t = span <= 0 ? 0 : (mid - c0) / span;
+      return { a: entries[i].theme, b: entries[i + 1].theme, t };
+    }
+  }
+
+  if (mid < entries[0].center) {
+    return { a: entries[0].theme, b: entries[0].theme, t: 0 };
+  }
+
+  const last = entries[entries.length - 1];
+  return { a: last.theme, b: last.theme, t: 0 };
 }
 
 export function useScrollPhasedPageTheme(
   scrollRoot: RefObject<HTMLElement | null>,
   enabled: boolean,
 ) {
-  const lastPhaseRef = useRef<Phase | null>(null);
-
   useEffect(() => {
     if (!enabled) return;
     const root = scrollRoot.current;
     if (!root) return;
 
     const recompute = () => {
-      const dominant = findDominantCityCard(root);
-      if (!dominant) return;
-
-      const raw = dominant.dataset.utcOffset;
-      if (raw === undefined || raw === '') return;
-
-      const offset = parseFloat(raw);
-      if (Number.isNaN(offset)) return;
-
-      const localM = localMinutesSinceMidnight(offset);
-      const phase = phaseFromLocalMinutes(localM);
-
-      if (lastPhaseRef.current === phase) return;
-      lastPhaseRef.current = phase;
-      applyVars(root, phase);
+      const blend = findScrollBlend(root);
+      if (!blend) return;
+      applyBlended(root, blend.a, blend.b, blend.t);
     };
 
     let raf = 0;
     const schedule = () => {
-      if (raf) cancelAnimationFrame(raf);
+      if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         recompute();
@@ -158,14 +245,13 @@ export function useScrollPhasedPageTheme(
     const clockId = window.setInterval(schedule, 30_000);
 
     schedule();
-    requestAnimationFrame(recompute);
+    recompute();
 
     return () => {
       root.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       window.clearInterval(clockId);
       if (raf) cancelAnimationFrame(raf);
-      lastPhaseRef.current = null;
       clearVars(root);
     };
   }, [enabled, scrollRoot]);

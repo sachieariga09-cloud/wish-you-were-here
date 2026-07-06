@@ -45,12 +45,17 @@ function LiveVideoInner({
   }, [videoId, isLive, embedShareId]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative h-full w-full overflow-hidden">
       <iframe
         src={src}
         title={`Live feed from ${city}`}
-        className="absolute inset-0 w-full h-full"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{
+          aspectRatio: '16 / 9',
+          width: 'auto',
+          height: 'auto',
+          minWidth: '100%',
+          minHeight: '100%',
           border: 'none',
           pointerEvents: isFrozen ? 'none' : 'auto',
         }}

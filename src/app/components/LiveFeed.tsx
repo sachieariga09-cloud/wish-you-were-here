@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { memo, useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { LiveVideo } from './LiveVideo';
 import { CityMapPopup } from './CityMapPopup';
 import { getUtcOffsetHoursForTimezone } from '../utils/utcOffsetFromTimezone';
 import { useIsMobile } from './ui/use-mobile';
+
+const IN_VIEW_RATIO = 0.35;
+const SCROLL_IDLE_MS = 200;
 
 interface LiveFeedProps {
   city: string;
@@ -21,12 +24,9 @@ interface LiveFeedProps {
   onPressEnd: () => void;
   /** Tighter gap to footer on mobile when this is the last city in the feed */
   isLast?: boolean;
-  /** @deprecated Mobile loads video when scrolled into view. */
-  videoEnabled?: boolean;
-  feedIndex?: number;
-  onFeedVisibility?: (index: number, ratio: number) => void;
 }
-export function LiveFeed({
+
+function LiveFeedInner({
   city,
   videoId,
   isLive = false,
@@ -41,8 +41,6 @@ export function LiveFeed({
   onPressStart,
   onPressEnd,
   isLast = false,
-  feedIndex,
-  onFeedVisibility,
 }: LiveFeedProps) {
   const [time, setTime] = useState('');
   const [isFrozen, setIsFrozen] = useState(false);
@@ -52,7 +50,8 @@ export function LiveFeed({
   const [mapPopupOpen, setMapPopupOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const cityAnchorRef = useRef<HTMLSpanElement>(null);
-  const inViewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inViewRef = useRef(false);
+  const mountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -61,35 +60,46 @@ export function LiveFeed({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (inViewDebounceRef.current) clearTimeout(inViewDebounceRef.current);
-        inViewDebounceRef.current = setTimeout(
-          () => {
-            setIsInView(entry.isIntersecting);
-            if (feedIndex !== undefined) {
-              onFeedVisibility?.(feedIndex, entry.intersectionRatio);
-            }
-          },
-          isMobile ? 250 : 0,
-        );
+        const inView = entry.intersectionRatio >= IN_VIEW_RATIO;
+        if (inViewRef.current === inView) return;
+        inViewRef.current = inView;
+        setIsInView(inView);
       },
       isMobile
-        ? { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '0px 0px -10% 0px' }
+        ? { threshold: [0, IN_VIEW_RATIO, 0.6] }
         : { threshold: 0.55 },
     );
 
     observer.observe(element);
-    return () => {
-      observer.disconnect();
-      if (inViewDebounceRef.current) clearTimeout(inViewDebounceRef.current);
-    };
-  }, [isMobile, feedIndex, onFeedVisibility]);
+    return () => observer.disconnect();
+  }, [isMobile]);
 
+  // Desktop: mount immediately. Mobile: mount after scroll settles to avoid iframe jank.
   useEffect(() => {
-    if (isInView) setMountVideo(true);
-  }, [isInView]);
+    if (!isMobile) {
+      setMountVideo(true);
+      return;
+    }
+    if (!isInView) return;
+
+    const shell = containerRef.current?.closest('.live-feed-shell');
+    const scheduleMount = () => {
+      if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
+      mountTimerRef.current = setTimeout(() => {
+        if (inViewRef.current) setMountVideo(true);
+      }, SCROLL_IDLE_MS);
+    };
+
+    scheduleMount();
+    shell?.addEventListener('scroll', scheduleMount, { passive: true });
+
+    return () => {
+      shell?.removeEventListener('scroll', scheduleMount);
+      if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
+    };
+  }, [isMobile, isInView]);
 
   const showVideo = !isMobile || mountVideo;
-
   const isVisuallyFocused = isInView || isFocused;
 
   useEffect(() => {
@@ -141,15 +151,16 @@ export function LiveFeed({
     setMapPopupOpen((open) => !open);
   };
 
+  const videoShellClass = isMobile
+    ? `live-feed-video-shell relative aspect-video w-full cursor-pointer overflow-hidden rounded-sm${isVisuallyFocused ? '' : ' live-feed-video-shell--dim'}`
+    : 'relative aspect-video w-full cursor-pointer overflow-hidden rounded-sm md:w-[320px]';
+
   return (
-    <motion.div
+    <div
       ref={containerRef}
       data-city-card
       data-utc-offset={String(utcOffsetHours)}
       className={`relative w-full flex-shrink-0 px-4 md:mb-0 md:w-auto md:px-0 ${isLast ? 'mb-0' : 'mb-8'}`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="relative">
         <div className="mb-3">
@@ -175,34 +186,50 @@ export function LiveFeed({
           </p>
         </div>
 
-        <motion.div
-          className="relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-sm md:h-[420px] md:w-[320px]"
-          onClick={onTap}
-          onMouseEnter={() => onHover?.(true)}
-          onMouseLeave={() => {
-            onHover?.(false);
-            handlePressEnd();
-          }}
-          onMouseDown={handlePressStart}
-          onMouseUp={handlePressEnd}
-          onTouchStart={handlePressStart}
-          onTouchEnd={handlePressEnd}
-          animate={
-            isMobile
-              ? {
-                  opacity: isVisuallyFocused ? 1 : 0.88,
-                  scale: 1,
-                }
-              : {
-                  filter: isVisuallyFocused
-                    ? 'blur(0px) brightness(1)'
-                    : 'blur(2px) brightness(0.88)',
-                  scale: isVisuallyFocused ? 1 : 0.98,
-                }
-          }
-          transition={{ duration: isMobile ? 0.25 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {showVideo ? (
+        {isMobile ? (
+          <div
+            className={videoShellClass}
+            onClick={onTap}
+            onTouchStart={handlePressStart}
+            onTouchEnd={handlePressEnd}
+          >
+            {showVideo ? (
+              <LiveVideo
+                videoId={videoId}
+                city={city}
+                isLive={isLive}
+                embedShareId={embedShareId}
+                isFrozen={isFrozen}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-neutral-300/40" aria-hidden />
+            )}
+            {isFrozen && (
+              <>
+                <div className="absolute inset-0 bg-white/5 backdrop-blur-[0.5px]" />
+                <div className="absolute inset-0 border-2 border-white/30" />
+              </>
+            )}
+          </div>
+        ) : (
+          <motion.div
+            className={videoShellClass}
+            onClick={onTap}
+            onMouseEnter={() => onHover?.(true)}
+            onMouseLeave={() => {
+              onHover?.(false);
+              handlePressEnd();
+            }}
+            onMouseDown={handlePressStart}
+            onMouseUp={handlePressEnd}
+            animate={{
+              filter: isVisuallyFocused
+                ? 'blur(0px) brightness(1)'
+                : 'blur(2px) brightness(0.88)',
+              scale: isVisuallyFocused ? 1 : 0.98,
+            }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
             <LiveVideo
               videoId={videoId}
               city={city}
@@ -210,27 +237,24 @@ export function LiveFeed({
               embedShareId={embedShareId}
               isFrozen={isFrozen}
             />
-          ) : (
-            <div className="absolute inset-0 bg-neutral-300/40" aria-hidden />
-          )}
-
-          {isFrozen && (
-            <>
-              <motion.div
-                className="absolute inset-0 bg-white/5 backdrop-blur-[0.5px]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-              />
-              <motion.div
-                className="absolute inset-0 border-2 border-white/30"
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </>
-          )}
-        </motion.div>
+            {isFrozen && (
+              <>
+                <motion.div
+                  className="absolute inset-0 bg-white/5 backdrop-blur-[0.5px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+                <motion.div
+                  className="absolute inset-0 border-2 border-white/30"
+                  initial={{ opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                />
+              </>
+            )}
+          </motion.div>
+        )}
       </div>
 
       <CityMapPopup
@@ -241,6 +265,8 @@ export function LiveFeed({
         anchorRef={cityAnchorRef}
         onClose={() => setMapPopupOpen(false)}
       />
-    </motion.div>
+    </div>
   );
 }
+
+export const LiveFeed = memo(LiveFeedInner);

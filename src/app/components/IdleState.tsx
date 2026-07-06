@@ -41,7 +41,7 @@ export function IdleState({ timeout = 120000 }: IdleStateProps) {
         <motion.div
           className="fixed inset-0 z-30 pointer-events-none flex items-center justify-center"
           style={{
-            backgroundColor: 'color-mix(in srgb, var(--page-bg, #F7F5F2) 90%, transparent)',
+            backgroundColor: 'color-mix(in srgb, var(--page-bg, #E8F1F8) 90%, transparent)',
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
