@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { PostcardLanding } from './components/PostcardLanding';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LiveFeed } from './components/LiveFeed';
@@ -96,7 +95,6 @@ export default function App() {
   const [viewState, setViewState] = useState<ViewState>('entry');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [showNarrativeText, setShowNarrativeText] = useState(true);
   const [landingKey, setLandingKey] = useState(0);
   const [timeMark, setTimeMark] = useState<'moon' | 'sun'>(() => {
     const now = new Date();
@@ -185,22 +183,12 @@ export default function App() {
     }
   }, [viewState]);
 
-  useEffect(() => {
-    if (viewState === 'live') {
-      const timer = setTimeout(() => {
-        setShowNarrativeText(false);
-      }, 1600);
-      return () => clearTimeout(timer);
-    }
-  }, [viewState]);
-
   const handleSendPostcard = () => {
     setViewState('loading');
   };
 
   const handleReturnToLanding = () => {
     setViewState('entry');
-    setShowNarrativeText(true);
     setLandingKey((prev) => prev + 1);
   };
 
@@ -214,7 +202,6 @@ export default function App() {
       return;
     }
     setViewState('live');
-    setShowNarrativeText(false);
   };
 
   if (viewState === 'entry') {
@@ -250,32 +237,10 @@ export default function App() {
         } as CSSProperties
       }
     >
-      {/* Narrative text overlay */}
-      <AnimatePresence>
-        {showNarrativeText && (
-          <motion.div
-            className="fixed inset-0 z-20 pointer-events-none flex items-center justify-center"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0.12 }}
-            transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <p
-              className="font-instrument-serif tracking-wider text-[1.125rem] font-normal [letter-spacing:0.08em] transition-colors duration-700 ease-in-out"
-              style={{ color: 'var(--page-fg, #333)' }}
-            >
-              Wish You Were Here
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Top bar: nav + local time */}
       <TopNav
         current="live"
         onNavigate={handleNavigate}
         variant="live"
-        hideHome={showNarrativeText}
         trailing={
           <p
             className="font-instrument-serif shrink-0 text-sm font-normal tabular-nums tracking-wider transition-colors duration-700 ease-in-out [letter-spacing:0.06em]"

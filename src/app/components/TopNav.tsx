@@ -51,7 +51,7 @@ export function TopNav({
 
   return (
     <nav
-      className="pointer-events-none fixed top-6 left-0 right-0 z-30 flex items-baseline justify-between gap-4 px-4 md:px-12"
+      className="pointer-events-none fixed top-6 left-0 right-0 z-50 flex items-baseline justify-between gap-4 px-4 md:px-12"
       aria-label="Main"
     >
       <div className="pointer-events-auto flex min-w-0 flex-1 items-baseline gap-5 md:gap-8">

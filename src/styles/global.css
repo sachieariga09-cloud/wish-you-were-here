@@ -64,7 +64,7 @@ input, textarea {
   background-color: transparent;
 }
 
-.live-feed-shell > * {
+.live-feed-shell > *:not(nav) {
   position: relative;
   z-index: 1;
 }
