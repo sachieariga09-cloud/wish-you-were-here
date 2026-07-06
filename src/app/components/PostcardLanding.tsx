@@ -38,7 +38,7 @@ export function PostcardLanding({ onSend }: PostcardLandingProps) {
 
   return (
     <div
-      className="relative flex size-full flex-col items-center justify-center gap-4 overflow-auto px-[min(40px,5vw)] py-[min(40px,5vw)]"
+      className="relative flex size-full flex-col items-center justify-center gap-4 overflow-auto px-[min(40px,5vw)] pb-[min(40px,5vw)] pt-20"
       style={{
         backgroundColor: '#F7F5F2',
         touchAction: 'pan-y pinch-zoom',

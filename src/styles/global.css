@@ -6,6 +6,11 @@
   font-family: "La Belle Aurore", cursive;
 }
 
+.font-times-condensed {
+  font-family: "Times New Roman MT Condensed", "Times New Roman", Times, serif;
+  font-stretch: condensed;
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -40,8 +45,15 @@ input, textarea {
 }
 
 
+.live-feed-shell {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Scattered star dots on navy (night) live feed — layered over --page-bg */
+.starry-sky,
 .live-feed-shell[data-scroll-phase='night'] {
+  background-color: #0d1b2a;
   background-image:
     radial-gradient(circle at 4% 8%, rgba(255, 255, 255, 0.88) 0.45px, transparent 1.05px),
     radial-gradient(circle at 11% 3%, rgba(255, 255, 255, 0.42) 0.4px, transparent 1px),

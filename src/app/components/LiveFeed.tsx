@@ -3,10 +3,13 @@ import { motion } from 'motion/react';
 import { LiveVideo } from './LiveVideo';
 import { CityMapPopup } from './CityMapPopup';
 import { getUtcOffsetHoursForTimezone } from '../utils/utcOffsetFromTimezone';
+import { useIsMobile } from './ui/use-mobile';
 
 interface LiveFeedProps {
   city: string;
   videoId: string;
+  isLive?: boolean;
+  embedShareId?: string;
   timezone: string;
   temperature: number;
   lat: number;
@@ -18,11 +21,16 @@ interface LiveFeedProps {
   onPressEnd: () => void;
   /** Tighter gap to footer on mobile when this is the last city in the feed */
   isLast?: boolean;
+  /** @deprecated Mobile loads video when scrolled into view. */
+  videoEnabled?: boolean;
+  feedIndex?: number;
+  onFeedVisibility?: (index: number, ratio: number) => void;
 }
-
 export function LiveFeed({
   city,
   videoId,
+  isLive = false,
+  embedShareId,
   timezone,
   temperature,
   lat,
@@ -33,33 +41,54 @@ export function LiveFeed({
   onPressStart,
   onPressEnd,
   isLast = false,
+  feedIndex,
+  onFeedVisibility,
 }: LiveFeedProps) {
   const [time, setTime] = useState('');
   const [isFrozen, setIsFrozen] = useState(false);
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isInView, setIsInView] = useState(false);
+  const [mountVideo, setMountVideo] = useState(false);
   const [mapPopupOpen, setMapPopupOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const cityAnchorRef = useRef<HTMLSpanElement>(null);
+  const inViewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
 
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsInView(entry.isIntersecting);
+        if (inViewDebounceRef.current) clearTimeout(inViewDebounceRef.current);
+        inViewDebounceRef.current = setTimeout(
+          () => {
+            setIsInView(entry.isIntersecting);
+            if (feedIndex !== undefined) {
+              onFeedVisibility?.(feedIndex, entry.intersectionRatio);
+            }
+          },
+          isMobile ? 250 : 0,
+        );
       },
       isMobile
-        ? { rootMargin: '-30% 0px -30% 0px', threshold: 0 }
+        ? { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '0px 0px -10% 0px' }
         : { threshold: 0.55 },
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      observer.disconnect();
+      if (inViewDebounceRef.current) clearTimeout(inViewDebounceRef.current);
+    };
+  }, [isMobile, feedIndex, onFeedVisibility]);
+
+  useEffect(() => {
+    if (isInView) setMountVideo(true);
+  }, [isInView]);
+
+  const showVideo = !isMobile || mountVideo;
 
   const isVisuallyFocused = isInView || isFocused;
 
@@ -96,7 +125,7 @@ export function LiveFeed({
 
   const utcOffsetHours = useMemo(
     () => getUtcOffsetHoursForTimezone(timezone),
-    [timezone, time],
+    [timezone],
   );
 
   const captionStyle = {
@@ -158,13 +187,32 @@ export function LiveFeed({
           onMouseUp={handlePressEnd}
           onTouchStart={handlePressStart}
           onTouchEnd={handlePressEnd}
-          animate={{
-            filter: isVisuallyFocused ? 'blur(0px) brightness(1)' : 'blur(2px) brightness(0.88)',
-            scale: isVisuallyFocused ? 1 : 0.98,
-          }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          animate={
+            isMobile
+              ? {
+                  opacity: isVisuallyFocused ? 1 : 0.88,
+                  scale: 1,
+                }
+              : {
+                  filter: isVisuallyFocused
+                    ? 'blur(0px) brightness(1)'
+                    : 'blur(2px) brightness(0.88)',
+                  scale: isVisuallyFocused ? 1 : 0.98,
+                }
+          }
+          transition={{ duration: isMobile ? 0.25 : 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
-          <LiveVideo videoId={videoId} city={city} isFrozen={isFrozen} />
+          {showVideo ? (
+            <LiveVideo
+              videoId={videoId}
+              city={city}
+              isLive={isLive}
+              embedShareId={embedShareId}
+              isFrozen={isFrozen}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-neutral-300/40" aria-hidden />
+          )}
 
           {isFrozen && (
             <>

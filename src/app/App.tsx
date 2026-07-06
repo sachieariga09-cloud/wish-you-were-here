@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { PostcardLanding } from './components/PostcardLanding';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LiveFeed } from './components/LiveFeed';
+import { Gallery } from './components/Gallery';
+import { TopNav } from './components/TopNav';
 import { RareTextFragment } from './components/RareTextFragment';
 import { IdleState } from './components/IdleState';
 import { useScrollPhasedPageTheme } from './hooks/useScrollPhasedPageTheme';
 import { getUtcOffsetHoursForTimezone } from './utils/utcOffsetFromTimezone';
+import { useIsMobile } from './components/ui/use-mobile';
 
-type ViewState = 'entry' | 'loading' | 'live';
+type ViewState = 'entry' | 'loading' | 'live' | 'gallery';
 
 /** Source list; scroll order is derived by sorting on current UTC offset (east → west). */
 const cityDefinitions = [
@@ -55,7 +58,10 @@ const cityDefinitions = [
   },
   {
     name: 'Cape Town',
-    videoId: 'IGu55JrxyHU',
+    // https://www.youtube.com/live/khhdEM2Q_68?si=lUpGuh1r6KhxEnYY
+    videoId: 'khhdEM2Q_68',
+    isLive: true,
+    embedShareId: 'lUpGuh1r6KhxEnYY',
     timezone: 'Africa/Johannesburg',
     temperature: 22,
     lat: -33.9249,
@@ -92,6 +98,12 @@ export default function App() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [showNarrativeText, setShowNarrativeText] = useState(true);
   const [landingKey, setLandingKey] = useState(0);
+  const [timeMark, setTimeMark] = useState<'moon' | 'sun'>(() => {
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    // Moon: 6:00pm–4:00am (inclusive). Sun: 4:01am–5:59pm.
+    return minutes >= 18 * 60 || minutes <= 4 * 60 ? 'moon' : 'sun';
+  });
   const [localTime, setLocalTime] = useState(() =>
     new Date().toLocaleTimeString(undefined, {
       hour: '2-digit',
@@ -101,14 +113,55 @@ export default function App() {
     }),
   );
   const liveScrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   useScrollPhasedPageTheme(liveScrollRef, viewState === 'live');
 
   useEffect(() => {
     if (viewState !== 'live') return;
 
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const root = liveScrollRef.current;
+    if (!root) {
+      return () => {
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+      };
+    }
+
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (root.scrollTop > 0) return;
+      const y = e.touches[0]?.clientY ?? 0;
+      if (y > touchStartY + 6) {
+        e.preventDefault();
+      }
+    };
+
+    root.addEventListener('touchstart', onTouchStart, { passive: true });
+    root.addEventListener('touchmove', onTouchMove, { passive: false });
+
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      root.removeEventListener('touchstart', onTouchStart);
+      root.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [viewState]);
+
+  useEffect(() => {
+    if (viewState !== 'live') return;
+
     const tick = () => {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      setTimeMark(minutes >= 18 * 60 || minutes <= 4 * 60 ? 'moon' : 'sun');
       setLocalTime(
-        new Date().toLocaleTimeString(undefined, {
+        now.toLocaleTimeString(undefined, {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
@@ -149,8 +202,30 @@ export default function App() {
     setLandingKey((prev) => prev + 1);
   };
 
+  const handleNavigate = (page: 'entry' | 'gallery' | 'live') => {
+    if (page === 'entry') {
+      handleReturnToLanding();
+      return;
+    }
+    if (page === 'gallery') {
+      setViewState('gallery');
+      return;
+    }
+    setViewState('live');
+    setShowNarrativeText(false);
+  };
+
   if (viewState === 'entry') {
-    return <PostcardLanding key={landingKey} onSend={handleSendPostcard} />;
+    return (
+      <div className="relative size-full">
+        <TopNav current="entry" onNavigate={handleNavigate} variant="light" />
+        <PostcardLanding key={landingKey} onSend={handleSendPostcard} />
+      </div>
+    );
+  }
+
+  if (viewState === 'gallery') {
+    return <Gallery onNavigate={handleNavigate} />;
   }
 
   if (viewState === 'loading') {
@@ -173,7 +248,9 @@ export default function App() {
           backgroundColor: 'var(--page-bg)',
           color: 'var(--page-fg)',
           transition: 'background-color 0.7s ease, color 0.7s ease',
-          scrollBehavior: 'smooth',
+          scrollBehavior: isMobile ? 'auto' : 'smooth',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
         } as CSSProperties
       }
     >
@@ -197,43 +274,35 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Top bar: ghost link (left) + local time (right), same row */}
-      <div className="pointer-events-none fixed top-6 left-0 right-0 z-30 flex items-baseline justify-between gap-4 px-4 md:px-12">
-        <div className="min-w-0 flex-1">
-          {!showNarrativeText && (
-            <motion.div
-              className="pointer-events-auto inline-block cursor-pointer group"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              whileHover={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              onClick={handleReturnToLanding}
-            >
-              <p
-                className="font-instrument-serif tracking-wider text-sm font-normal transition-colors duration-700 ease-in-out [letter-spacing:0.08em] group-hover:[color:var(--page-header-fg-strong,#0d1b2a)]"
-                style={{ color: 'var(--page-header-fg, #1e3a5f)' }}
-              >
-                Wish You Were Here
-              </p>
-            </motion.div>
-          )}
-        </div>
-        <p
-          className="font-instrument-serif shrink-0 text-sm font-normal tabular-nums tracking-wider transition-colors duration-700 ease-in-out [letter-spacing:0.06em]"
-          style={{ color: 'var(--page-header-fg, #1e3a5f)' }}
-          aria-live="polite"
-        >
-          {localTime}
-        </p>
-      </div>
+      {/* Top bar: nav + local time */}
+      <TopNav
+        current="live"
+        onNavigate={handleNavigate}
+        variant="live"
+        hideHome={showNarrativeText}
+        trailing={
+          <p
+            className="font-instrument-serif shrink-0 text-sm font-normal tabular-nums tracking-wider transition-colors duration-700 ease-in-out [letter-spacing:0.06em]"
+            style={{ color: 'var(--page-header-fg, #1e3a5f)' }}
+            aria-live="polite"
+          >
+            <span aria-hidden className="mr-2 inline-block">
+              {timeMark === 'moon' ? '⏾' : '☀︎'}
+            </span>
+            {localTime}
+          </p>
+        }
+      />
 
-      {/* Mobile: Vertical feed - limit initial render for performance */}
+      {/* Mobile: vertical feed */}
       <div className="md:hidden pt-24 pb-2 px-0">
-        {cities.slice(0, 3).map((city, index) => (
+        {cities.map((city, index) => (
           <LiveFeed
             key={city.name}
             city={city.name}
             videoId={city.videoId}
+            isLive={city.isLive}
+            embedShareId={city.embedShareId}
             timezone={city.timezone}
             temperature={city.temperature}
             lat={city.lat}
@@ -243,22 +312,6 @@ export default function App() {
             onPressStart={() => {}}
             onPressEnd={() => {}}
             isLast={index === cities.length - 1}
-          />
-        ))}
-        {cities.slice(3).map((city, index) => (
-          <LiveFeed
-            key={city.name}
-            city={city.name}
-            videoId={city.videoId}
-            timezone={city.timezone}
-            temperature={city.temperature}
-            lat={city.lat}
-            lon={city.lon}
-            isFocused={focusedIndex === index + 3}
-            onTap={() => setFocusedIndex(focusedIndex === index + 3 ? null : index + 3)}
-            onPressStart={() => {}}
-            onPressEnd={() => {}}
-            isLast={index + 3 === cities.length - 1}
           />
         ))}
       </div>
@@ -278,6 +331,8 @@ export default function App() {
             <LiveFeed
               city={city.name}
               videoId={city.videoId}
+              isLive={city.isLive}
+              embedShareId={city.embedShareId}
               timezone={city.timezone}
               temperature={city.temperature}
               lat={city.lat}
