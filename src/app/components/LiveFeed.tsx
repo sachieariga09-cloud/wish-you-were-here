@@ -6,8 +6,7 @@ import { getUtcOffsetHoursForTimezone } from '../utils/utcOffsetFromTimezone';
 import { useCityTemperature } from '../hooks/useCityTemperature';
 import { useIsMobile } from './ui/use-mobile';
 
-const IN_VIEW_RATIO = 0.35;
-const SCROLL_IDLE_MS = 200;
+const IN_VIEW_RATIO = 0.2;
 const TIME_TICK_MS = 30_000;
 
 interface LiveFeedProps {
@@ -51,13 +50,14 @@ function LiveFeedInner({
   const containerRef = useRef<HTMLDivElement>(null);
   const cityAnchorRef = useRef<HTMLSpanElement>(null);
   const inViewRef = useRef(false);
-  const mountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
   const temperature = useCityTemperature(lat, lon);
 
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
+
+    const scrollRoot = element.closest('.live-feed-shell');
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -66,42 +66,21 @@ function LiveFeedInner({
         inViewRef.current = inView;
         setIsInView(inView);
       },
-      isMobile
-        ? { threshold: [0, IN_VIEW_RATIO, 0.6] }
-        : { threshold: 0.55 },
+      {
+        root: scrollRoot,
+        threshold: isMobile ? [0, IN_VIEW_RATIO, 0.6] : [0, 0.55],
+      },
     );
 
     observer.observe(element);
     return () => observer.disconnect();
   }, [isMobile]);
 
-  // Mount videos lazily to avoid iframe jank (desktop + mobile).
+  // Mount when in view so autoplay can start (especially on mobile Safari).
   useEffect(() => {
-    if (!isInView) return;
-    if (mountVideo) return;
-
-    // Desktop: mount as soon as it’s in view.
-    if (!isMobile) {
-      setMountVideo(true);
-      return;
-    }
-
-    const shell = containerRef.current?.closest('.live-feed-shell');
-    const scheduleMount = () => {
-      if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
-      mountTimerRef.current = setTimeout(() => {
-        if (inViewRef.current) setMountVideo(true);
-      }, SCROLL_IDLE_MS);
-    };
-
-    scheduleMount();
-    shell?.addEventListener('scroll', scheduleMount, { passive: true });
-
-    return () => {
-      shell?.removeEventListener('scroll', scheduleMount);
-      if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
-    };
-  }, [isMobile, isInView, mountVideo]);
+    if (!isInView || mountVideo) return;
+    setMountVideo(true);
+  }, [isInView, mountVideo]);
 
   const showVideo = mountVideo;
   const isVisuallyFocused = isInView || isFocused;

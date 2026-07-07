@@ -17,16 +17,19 @@ function LiveVideoInner({
   isFrozen,
 }: LiveVideoProps) {
   const src = useMemo(() => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : undefined;
+
     if (isLive) {
       const params = new URLSearchParams({
         autoplay: '1',
         mute: '1',
         playsinline: '1',
+        rel: '0',
+        modestbranding: '1',
       });
       if (embedShareId) params.set('si', embedShareId);
-      if (typeof window !== 'undefined') {
-        params.set('origin', window.location.origin);
-      }
+      if (origin) params.set('origin', origin);
       return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
     }
 
@@ -41,6 +44,7 @@ function LiveVideoInner({
       loop: '1',
       playlist: videoId,
     });
+    if (origin) embedParams.set('origin', origin);
     return `https://www.youtube.com/embed/${videoId}?${embedParams.toString()}`;
   }, [videoId, isLive, embedShareId]);
 
@@ -49,7 +53,6 @@ function LiveVideoInner({
       <iframe
         src={src}
         title={`Live feed from ${city}`}
-        loading="lazy"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{
           aspectRatio: '16 / 9',
@@ -62,7 +65,7 @@ function LiveVideoInner({
         }}
         // @ts-expect-error: supported in Chromium; safe to pass through.
         fetchPriority="low"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
       />

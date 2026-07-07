@@ -70,11 +70,6 @@ input, textarea {
 }
 
 @media (max-width: 767px) {
-  [data-city-card] {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 280px;
-  }
-
   .live-feed-video-shell {
     opacity: 1;
     transform: translateZ(0);
