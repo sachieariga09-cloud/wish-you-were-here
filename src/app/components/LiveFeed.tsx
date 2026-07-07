@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { LiveVideo } from './LiveVideo';
 import { CityMapPopup } from './CityMapPopup';
 import { getUtcOffsetHoursForTimezone } from '../utils/utcOffsetFromTimezone';
+import { useCityTemperature } from '../hooks/useCityTemperature';
 import { useIsMobile } from './ui/use-mobile';
 
 const IN_VIEW_RATIO = 0.35;
@@ -15,7 +16,6 @@ interface LiveFeedProps {
   isLive?: boolean;
   embedShareId?: string;
   timezone: string;
-  temperature: number;
   lat: number;
   lon: number;
   isFocused: boolean;
@@ -33,7 +33,6 @@ function LiveFeedInner({
   isLive = false,
   embedShareId,
   timezone,
-  temperature,
   lat,
   lon,
   isFocused,
@@ -54,6 +53,7 @@ function LiveFeedInner({
   const inViewRef = useRef(false);
   const mountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
+  const temperature = useCityTemperature(lat, lon);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -187,7 +187,7 @@ function LiveFeedInner({
               {city}
             </span>
             {' · '}
-            {time} · {temperature}°C
+            {time} · {temperature !== null ? `${Math.round(temperature)}°C` : '—°C'}
           </p>
         </div>
 

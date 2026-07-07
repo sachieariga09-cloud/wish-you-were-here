@@ -96,7 +96,6 @@ export function LiveFeedPage({ onNavigate }: LiveFeedPageProps) {
             isLive={'isLive' in city ? city.isLive : undefined}
             embedShareId={'embedShareId' in city ? city.embedShareId : undefined}
             timezone={city.timezone}
-            temperature={city.temperature}
             lat={city.lat}
             lon={city.lon}
             isFocused={focusedIndex === index}
@@ -117,7 +116,6 @@ export function LiveFeedPage({ onNavigate }: LiveFeedPageProps) {
               isLive={'isLive' in city ? city.isLive : undefined}
               embedShareId={'embedShareId' in city ? city.embedShareId : undefined}
               timezone={city.timezone}
-              temperature={city.temperature}
               lat={city.lat}
               lon={city.lon}
               isFocused={focusedIndex === index || hoveredIndex === index}
