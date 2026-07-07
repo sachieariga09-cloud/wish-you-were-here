@@ -2,8 +2,8 @@ import { useId } from 'react';
 import { motion } from 'motion/react';
 import worldMapPng from '../../assets/world-map.png';
 
-const MAP_W = 1024;
-const MAP_H = 438;
+const MAP_W = 512;
+const MAP_H = 219;
 
 function projectEquirectangular(lon: number, lat: number) {
   const x = ((lon + 180) / 360) * MAP_W;

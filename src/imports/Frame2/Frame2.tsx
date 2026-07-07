@@ -1,4 +1,4 @@
-import imgImg5824R010201 from './722429ffed9b27707ef0cdffe37620c09a8981b0.png';
+import imgImg5824R010201 from '../../imports/Frame1/722429ffed9b27707ef0cdffe37620c09a8981b0.png';
 import {
   POSTCARD_DESIGN_HEIGHT,
   POSTCARD_DESIGN_WIDTH,
@@ -37,6 +37,8 @@ export default function Frame2({ blurBackground = false }: Frame2Props) {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgImg5824R010201}
+          width={POSTCARD_DESIGN_WIDTH}
+          height={POSTCARD_DESIGN_HEIGHT}
           loading="lazy"
           decoding="async"
         />

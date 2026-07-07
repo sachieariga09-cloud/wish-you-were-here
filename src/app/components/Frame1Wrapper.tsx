@@ -26,8 +26,11 @@ export default function Frame1Wrapper() {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgImg5824R010201}
-          loading="lazy"
+          width={POSTCARD_DESIGN_WIDTH}
+          height={POSTCARD_DESIGN_HEIGHT}
+          loading="eager"
           decoding="async"
+          fetchPriority="high"
         />
       </div>
       <div className="absolute inset-0 leading-[0]" data-name="Hello from the Big Apple overlay">
@@ -35,7 +38,9 @@ export default function Frame1Wrapper() {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgHelloFromTheBigAppleCurrentlyDodgingYellowCabsEatingMyWayThroughPizzaSlicesAndPretendingImInAMovieSceneThisCityNeverSleeps1}
-          loading="lazy"
+          width={POSTCARD_DESIGN_WIDTH}
+          height={POSTCARD_DESIGN_HEIGHT}
+          loading="eager"
           decoding="async"
         />
       </div>
