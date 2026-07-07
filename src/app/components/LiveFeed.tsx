@@ -165,7 +165,7 @@ function LiveFeedInner({
       ref={containerRef}
       data-city-card
       data-utc-offset={String(utcOffsetHours)}
-      className={`relative w-full flex-shrink-0 px-4 md:mb-0 md:w-auto md:px-0 ${isLast ? 'mb-12' : 'mb-8'}`}
+      className={`relative w-full flex-shrink-0 px-4 md:mb-0 md:w-auto md:px-0 ${isLast ? 'mb-14' : 'mb-10'}`}
     >
       <div className="relative">
         <div className="mb-3">
