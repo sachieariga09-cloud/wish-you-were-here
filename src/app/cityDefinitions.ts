@@ -3,7 +3,9 @@ import { getUtcOffsetHoursForTimezone } from './utils/utcOffsetFromTimezone';
 export const cityDefinitions = [
   {
     name: 'Tokyo',
-    videoId: '8H3nRCFVR6Y',
+    videoId: 'dfVK7ld38Ys',
+    isLive: true,
+    embedShareId: '7GNJ18T4UxIvbKG3',
     timezone: 'Asia/Tokyo',
     lat: 35.6595,
     lon: 139.7004,
