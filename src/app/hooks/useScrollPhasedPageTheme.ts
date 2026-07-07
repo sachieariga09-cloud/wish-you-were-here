@@ -181,13 +181,16 @@ function findScrollBlend(
   const cards = scrollRoot.querySelectorAll<HTMLElement>('[data-city-card]');
   if (!cards.length) return null;
 
-  const mid = window.innerHeight / 2;
+  const vh = window.innerHeight;
+  const mid = vh / 2;
   const entries: { center: number; theme: ThemeVars }[] = [];
 
   cards.forEach((el) => {
     const theme = getCardTheme(el);
     if (!theme) return;
     const r = el.getBoundingClientRect();
+    // Skip cards far outside the viewport to reduce per-scroll layout work.
+    if (r.bottom < -vh || r.top > vh * 2) return;
     entries.push({ center: r.top + r.height / 2, theme });
   });
 

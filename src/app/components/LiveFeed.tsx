@@ -7,6 +7,7 @@ import { useIsMobile } from './ui/use-mobile';
 
 const IN_VIEW_RATIO = 0.35;
 const SCROLL_IDLE_MS = 200;
+const TIME_TICK_MS = 30_000;
 
 interface LiveFeedProps {
   city: string;
@@ -74,13 +75,16 @@ function LiveFeedInner({
     return () => observer.disconnect();
   }, [isMobile]);
 
-  // Desktop: mount immediately. Mobile: mount after scroll settles to avoid iframe jank.
+  // Mount videos lazily to avoid iframe jank (desktop + mobile).
   useEffect(() => {
+    if (!isInView) return;
+    if (mountVideo) return;
+
+    // Desktop: mount as soon as it’s in view.
     if (!isMobile) {
       setMountVideo(true);
       return;
     }
-    if (!isInView) return;
 
     const shell = containerRef.current?.closest('.live-feed-shell');
     const scheduleMount = () => {
@@ -97,9 +101,9 @@ function LiveFeedInner({
       shell?.removeEventListener('scroll', scheduleMount);
       if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
     };
-  }, [isMobile, isInView]);
+  }, [isMobile, isInView, mountVideo]);
 
-  const showVideo = !isMobile || mountVideo;
+  const showVideo = mountVideo;
   const isVisuallyFocused = isInView || isFocused;
 
   useEffect(() => {
@@ -112,8 +116,9 @@ function LiveFeedInner({
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    // Only HH:MM is displayed; updating every second is unnecessary and expensive.
+    const interval = window.setInterval(updateTime, TIME_TICK_MS);
+    return () => window.clearInterval(interval);
   }, [timezone]);
 
   const handlePressStart = () => {

@@ -28,8 +28,14 @@ export function TopNav({
       : isDark
         ? '#f0ece4'
         : '#1e3a5f';
-  const mutedColor = isDark ? 'rgba(240, 236, 228, 0.55)' : 'rgba(30, 58, 95, 0.55)';
-  const activeColor = isDark ? '#ffffff' : '#0d1b2a';
+  const mutedColor =
+    variant === 'live'
+      ? 'var(--page-header-fg, #1e3a5f)'
+      : isDark
+        ? 'rgba(240, 236, 228, 0.55)'
+        : 'rgba(30, 58, 95, 0.55)';
+  const activeColor =
+    variant === 'live' ? 'var(--page-header-fg-strong, #0d1b2a)' : isDark ? '#ffffff' : '#0d1b2a';
 
   const navLink = (page: NavPage, label: string) => {
     const isActive = current === page;

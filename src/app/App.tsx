@@ -5,6 +5,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { LiveFeed } from './components/LiveFeed';
 import { Gallery } from './components/Gallery';
 import { TopNav } from './components/TopNav';
+import { LiveHeaderClock } from './components/LiveHeaderClock';
 import { RareTextFragment } from './components/RareTextFragment';
 import { IdleState } from './components/IdleState';
 import { useScrollPhasedPageTheme } from './hooks/useScrollPhasedPageTheme';
@@ -96,20 +97,6 @@ export default function App() {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [landingKey, setLandingKey] = useState(0);
-  const [timeMark, setTimeMark] = useState<'moon' | 'sun'>(() => {
-    const now = new Date();
-    const minutes = now.getHours() * 60 + now.getMinutes();
-    // Moon: 6:00pm–4:00am (inclusive). Sun: 4:01am–5:59pm.
-    return minutes >= 18 * 60 || minutes <= 4 * 60 ? 'moon' : 'sun';
-  });
-  const [localTime, setLocalTime] = useState(() =>
-    new Date().toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }),
-  );
   const liveScrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   useScrollPhasedPageTheme(liveScrollRef, viewState === 'live');
@@ -151,27 +138,6 @@ export default function App() {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
     };
-  }, [viewState]);
-
-  useEffect(() => {
-    if (viewState !== 'live') return;
-
-    const tick = () => {
-      const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
-      setTimeMark(minutes >= 18 * 60 || minutes <= 4 * 60 ? 'moon' : 'sun');
-      setLocalTime(
-        now.toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false,
-        }),
-      );
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
   }, [viewState]);
 
   useEffect(() => {
@@ -242,16 +208,7 @@ export default function App() {
         onNavigate={handleNavigate}
         variant="live"
         trailing={
-          <p
-            className="font-instrument-serif shrink-0 text-sm font-normal tabular-nums tracking-wider transition-colors duration-700 ease-in-out [letter-spacing:0.06em]"
-            style={{ color: 'var(--page-header-fg, #1e3a5f)' }}
-            aria-live="polite"
-          >
-            <span aria-hidden className="mr-2 inline-block">
-              {timeMark === 'moon' ? '⏾' : '☀︎'}
-            </span>
-            {localTime}
-          </p>
+          <LiveHeaderClock />
         }
       />
 

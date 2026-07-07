@@ -49,6 +49,7 @@ function LiveVideoInner({
       <iframe
         src={src}
         title={`Live feed from ${city}`}
+        loading="lazy"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{
           aspectRatio: '16 / 9',
@@ -59,6 +60,8 @@ function LiveVideoInner({
           border: 'none',
           pointerEvents: isFrozen ? 'none' : 'auto',
         }}
+        // @ts-expect-error: supported in Chromium; safe to pass through.
+        fetchPriority="low"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
