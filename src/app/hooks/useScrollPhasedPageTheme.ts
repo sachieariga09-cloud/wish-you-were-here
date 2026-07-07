@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 type Phase = 'night' | 'dawn' | 'day' | 'dusk';
 
@@ -175,43 +175,54 @@ function getCardTheme(card: HTMLElement): ThemeVars | null {
   return themeForUtcOffset(offset);
 }
 
-function findScrollBlend(
-  scrollRoot: HTMLElement,
-): { a: ThemeVars; b: ThemeVars; t: number } | null {
-  const cards = scrollRoot.querySelectorAll<HTMLElement>('[data-city-card]');
-  if (!cards.length) return null;
+type CardEntry = {
+  centerY: number; // relative to scrollRoot scrollTop coordinates
+  theme: ThemeVars;
+};
 
-  const vh = window.innerHeight;
-  const mid = vh / 2;
-  const entries: { center: number; theme: ThemeVars }[] = [];
+function buildCardEntries(scrollRoot: HTMLElement): CardEntry[] {
+  const cards = scrollRoot.querySelectorAll<HTMLElement>('[data-city-card]');
+  if (!cards.length) return [];
+
+  const entries: CardEntry[] = [];
 
   cards.forEach((el) => {
     const theme = getCardTheme(el);
     if (!theme) return;
-    const r = el.getBoundingClientRect();
-    // Skip cards far outside the viewport to reduce per-scroll layout work.
-    if (r.bottom < -vh || r.top > vh * 2) return;
-    entries.push({ center: r.top + r.height / 2, theme });
+    // offsetTop/offsetHeight are relative to the scroll container and avoid
+    // per-scroll viewport layout reads.
+    const top = el.offsetTop;
+    const height = el.offsetHeight || 0;
+    entries.push({ centerY: top + height / 2, theme });
   });
 
+  entries.sort((a, b) => a.centerY - b.centerY);
+  return entries;
+}
+
+function findScrollBlendFromEntries(
+  entries: CardEntry[],
+  scrollRoot: HTMLElement,
+): { a: ThemeVars; b: ThemeVars; t: number } | null {
   if (!entries.length) return null;
-  entries.sort((x, y) => x.center - y.center);
+  const midY = scrollRoot.scrollTop + scrollRoot.clientHeight / 2;
 
   if (entries.length === 1) {
     return { a: entries[0].theme, b: entries[0].theme, t: 0 };
   }
 
+  // Find the pair of entries surrounding midY.
   for (let i = 0; i < entries.length - 1; i++) {
-    const c0 = entries[i].center;
-    const c1 = entries[i + 1].center;
-    if (mid >= c0 && mid <= c1) {
-      const span = c1 - c0;
-      const t = span <= 0 ? 0 : (mid - c0) / span;
+    const y0 = entries[i].centerY;
+    const y1 = entries[i + 1].centerY;
+    if (midY >= y0 && midY <= y1) {
+      const span = y1 - y0;
+      const t = span <= 0 ? 0 : (midY - y0) / span;
       return { a: entries[i].theme, b: entries[i + 1].theme, t };
     }
   }
 
-  if (mid < entries[0].center) {
+  if (midY < entries[0].centerY) {
     return { a: entries[0].theme, b: entries[0].theme, t: 0 };
   }
 
@@ -223,13 +234,15 @@ export function useScrollPhasedPageTheme(
   scrollRoot: RefObject<HTMLElement | null>,
   enabled: boolean,
 ) {
+  const entriesRef = useRef<CardEntry[]>([]);
+
   useEffect(() => {
     if (!enabled) return;
     const root = scrollRoot.current;
     if (!root) return;
 
     const recompute = () => {
-      const blend = findScrollBlend(root);
+      const blend = findScrollBlendFromEntries(entriesRef.current, root);
       if (!blend) return;
       applyBlended(root, blend.a, blend.b, blend.t);
     };
@@ -243,17 +256,27 @@ export function useScrollPhasedPageTheme(
       });
     };
 
+    const rebuildEntries = () => {
+      entriesRef.current = buildCardEntries(root);
+      schedule();
+    };
+
     root.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule);
+    window.addEventListener('resize', rebuildEntries);
     const clockId = window.setInterval(schedule, 30_000);
 
-    schedule();
+    rebuildEntries();
     recompute();
+
+    // Fonts and late-loading embeds can shift layout after first paint.
+    // Rebuild once shortly after mount to keep blending accurate.
+    const lateLayoutId = window.setTimeout(rebuildEntries, 800);
 
     return () => {
       root.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
+      window.removeEventListener('resize', rebuildEntries);
       window.clearInterval(clockId);
+      window.clearTimeout(lateLayoutId);
       if (raf) cancelAnimationFrame(raf);
       clearVars(root);
     };

@@ -26,6 +26,7 @@ export default function Frame1Wrapper() {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgImg5824R010201}
+          loading="lazy"
           decoding="async"
         />
       </div>
@@ -34,6 +35,7 @@ export default function Frame1Wrapper() {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgHelloFromTheBigAppleCurrentlyDodgingYellowCabsEatingMyWayThroughPizzaSlicesAndPretendingImInAMovieSceneThisCityNeverSleeps1}
+          loading="lazy"
           decoding="async"
         />
       </div>

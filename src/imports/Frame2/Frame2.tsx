@@ -37,6 +37,7 @@ export default function Frame2({ blurBackground = false }: Frame2Props) {
           alt=""
           className="pointer-events-none block size-full max-w-none object-cover"
           src={imgImg5824R010201}
+          loading="lazy"
           decoding="async"
         />
       </div>

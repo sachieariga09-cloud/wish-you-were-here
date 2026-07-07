@@ -237,7 +237,7 @@ export default function App() {
       {/* Desktop: one stream per row */}
       <div className="hidden md:flex flex-col items-center pt-24 pb-4 px-12">
         {cities.map((city, index) => (
-          <div key={city.name} className="w-full max-w-[520px] mb-10 last:mb-6">
+          <div key={city.name} className="w-full max-w-[520px] mb-10 last:mb-16">
             <LiveFeed
               city={city.name}
               videoId={city.videoId}

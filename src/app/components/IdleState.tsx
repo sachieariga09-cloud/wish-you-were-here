@@ -21,14 +21,14 @@ export function IdleState({ timeout = 120000 }: IdleStateProps) {
 
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
 
-    events.forEach(event => {
-      document.addEventListener(event, resetIdleTimer);
+    events.forEach((event) => {
+      document.addEventListener(event, resetIdleTimer, { passive: true });
     });
 
     resetIdleTimer();
 
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         document.removeEventListener(event, resetIdleTimer);
       });
       clearTimeout(idleTimer);

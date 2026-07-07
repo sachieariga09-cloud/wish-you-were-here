@@ -1,5 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 
+const TICK_MS = 1000;
+
 function LiveHeaderClockInner() {
   const [timeMark, setTimeMark] = useState<'moon' | 'sun'>(() => {
     const now = new Date();
@@ -31,7 +33,7 @@ function LiveHeaderClockInner() {
     };
 
     tick();
-    const id = window.setInterval(tick, 1000);
+    const id = window.setInterval(tick, TICK_MS);
     return () => window.clearInterval(id);
   }, []);
 

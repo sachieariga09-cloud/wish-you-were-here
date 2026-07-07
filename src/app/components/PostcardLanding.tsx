@@ -71,7 +71,7 @@ export function PostcardLanding({ onSend }: PostcardLandingProps) {
           <div className={`${postcardFace} [transform:translateZ(1px)]`}>
             <motion.div
               className="absolute inset-0"
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 1 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{
                 duration: 0.6,
