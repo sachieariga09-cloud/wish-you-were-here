@@ -277,18 +277,10 @@ export default function App() {
         ))}
       </div>
 
-      {/* Desktop: Loose grid */}
-      <div className="hidden md:flex flex-wrap justify-center items-start pt-24 pb-4 px-12">
+      {/* Desktop: one stream per row */}
+      <div className="hidden md:flex flex-col items-center pt-24 pb-4 px-12">
         {cities.map((city, index) => (
-          <div
-            key={city.name}
-            style={{
-              marginLeft: index % 2 === 0 ? '0' : '2rem',
-              marginRight: index % 2 === 0 ? '2rem' : '0',
-              marginTop: index === 0 ? '0' : index % 3 === 0 ? '3rem' : '1rem',
-              marginBottom: '1rem',
-            }}
-          >
+          <div key={city.name} className="w-full max-w-[520px] mb-10 last:mb-6">
             <LiveFeed
               city={city.name}
               videoId={city.videoId}
@@ -303,6 +295,7 @@ export default function App() {
               onHover={(isHovered) => setHoveredIndex(isHovered ? index : null)}
               onPressStart={() => {}}
               onPressEnd={() => {}}
+              isLast={index === cities.length - 1}
             />
           </div>
         ))}
